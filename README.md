@@ -1,4 +1,4 @@
-# rxjava-parallel-calc
+# rxjava-compare-kalman
 
 To run in Eclipse:
 1) Run as Maven build ... and set Goals: clean install
