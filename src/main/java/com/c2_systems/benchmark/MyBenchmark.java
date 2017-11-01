@@ -95,7 +95,7 @@ public class MyBenchmark {
         Double position = filter.getStateEstimation()[0];
         Double velocity = filter.getStateEstimation()[1];
 
-        bh.consume(position + velocity);
+        bh.consume(velocity);
 
     }
 
