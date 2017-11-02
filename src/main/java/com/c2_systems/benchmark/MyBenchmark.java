@@ -21,6 +21,7 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
@@ -35,6 +36,50 @@ public class MyBenchmark {
 
     @Param({"1000", "1100", "1200", "1300", "1400", "1500", "1600", "1700", "1800", "1900", "2000"})
     public int compute;
+
+    KalmanFilter kfilter;
+    RealVector u;
+    RealVector x;
+    RealMatrix A;
+    RealMatrix B;
+    RealMatrix H;
+    double dt;
+    double measurementNoise;
+    double accelNoise;
+
+    @Setup
+    public void setup() {
+
+    	//--------------------------------------------------
+        // Create filter
+        //--------------------------------------------------
+
+        dt = 0.1d;
+        measurementNoise = 10d;
+        accelNoise = 0.2d;
+
+        A = new Array2DRowRealMatrix(new double[][] { { 1, dt }, { 0, 1 } });
+        B = new Array2DRowRealMatrix(new double[][] { { Math.pow(dt, 2d) / 2d }, { dt } });
+        H = new Array2DRowRealMatrix(new double[][] { { 1d, 0d } });
+        x = new ArrayRealVector(new double[] { 0, 0 });
+
+        RealMatrix tmp = new Array2DRowRealMatrix(new double[][] {
+            { Math.pow(dt, 4d) / 4d, Math.pow(dt, 3d) / 2d },
+            { Math.pow(dt, 3d) / 2d, Math.pow(dt, 2d) } });
+
+        RealMatrix Q = tmp.scalarMultiply(Math.pow(accelNoise, 2));
+
+        RealMatrix P0 = new Array2DRowRealMatrix(new double[][] { { 1, 1 }, { 1, 1 } });
+
+        RealMatrix R = new Array2DRowRealMatrix(new double[] { Math.pow(measurementNoise, 2) });
+
+        u = new ArrayRealVector(new double[] { 0.1d });
+
+        ProcessModel pm = new DefaultProcessModel(A, B, Q, x, P0);
+        MeasurementModel mm = new DefaultMeasurementModel(H, R);
+        kfilter = new KalmanFilter(pm, mm);
+
+    }
 
     @Benchmark
     public void burnCycles(Blackhole bh) {
@@ -94,6 +139,28 @@ public class MyBenchmark {
 
         Double position = filter.getStateEstimation()[0];
         Double velocity = filter.getStateEstimation()[1];
+
+        bh.consume(velocity);
+
+    }
+
+    @Benchmark
+    public void kalmanfilterNoInit(Blackhole bh) {
+
+        RandomGenerator rand = new JDKRandomGenerator();
+        RealVector tmpPNoise = new ArrayRealVector(new double[] { Math.pow(dt, 2d) / 2d, dt });
+        RealVector mNoise = new ArrayRealVector(1);
+
+        kfilter.predict(u);
+        RealVector pNoise = tmpPNoise.mapMultiply(accelNoise * rand.nextGaussian());
+        x = A.operate(x).add(B.operate(u)).add(pNoise);
+        mNoise.setEntry(0, measurementNoise * rand.nextGaussian());
+        RealVector z = H.operate(x).add(mNoise);
+
+        kfilter.correct(z);
+
+        Double position = kfilter.getStateEstimation()[0];
+        Double velocity = kfilter.getStateEstimation()[1];
 
         bh.consume(velocity);
 
