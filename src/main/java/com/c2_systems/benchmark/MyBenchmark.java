@@ -29,7 +29,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @BenchmarkMode(Mode.Throughput)
 @Warmup(iterations = 5)
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Fork(value = 1,jvmArgsAppend = { "-XX:MaxInlineLevel=20" })
+@Fork(value = 0)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Thread)
 public class MyBenchmark {
@@ -49,10 +49,6 @@ public class MyBenchmark {
 
     @Setup
     public void setup() {
-
-    	//--------------------------------------------------
-        // Create filter
-        //--------------------------------------------------
 
         dt = 0.1d;
         measurementNoise = 10d;
